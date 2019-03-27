@@ -1,0 +1,52 @@
+import FluentSQLite
+import Vapor
+
+final class Player: Codable {
+    var id: Int?
+    var name: String
+    var age: Int
+    var skill: Skill?
+    var preferredPosition: Position?
+    var favouriteTeam: String?
+    
+    enum Skill: String, Codable {
+        case beginner, amateur, professional
+    }
+    
+    enum Position: String, Codable {
+        case any, goalkeeper, midfielder, defender
+    }
+    
+    init(name: String, age: Int, skill: Skill, preferredPosition: Position, favouriteTeam: String) {
+        self.name = name
+        self.age = age
+        self.skill = skill
+        self.preferredPosition = preferredPosition
+        self.favouriteTeam = favouriteTeam
+    }
+    
+    init(from decoder: Decoder) throws  {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        
+        if let id = try container.decodeIfPresent(Int.self, forKey: .id) {
+            self.id = id
+        }
+        
+        name = try container.decode(String.self, forKey: .name)
+        age = try container.decode(Int.self, forKey: .age)
+        favouriteTeam = try container.decodeIfPresent(String.self, forKey: .favouriteTeam)
+        
+        if let skillDesc = try container.decodeIfPresent(String.self, forKey: .skill) {
+            skill = Skill(rawValue: skillDesc)
+        }
+        
+        if let posDesc = try container.decodeIfPresent(String.self, forKey: .preferredPosition) {
+            preferredPosition = Position(rawValue: posDesc)
+        }
+    }
+}
+
+extension Player: SQLiteModel {}
+extension Player: Content {}
+extension Player: Migration {}
+extension Player: Parameter {}
