@@ -1,20 +1,14 @@
 # Football Gather - Server Side
+
 <p align="center">
-    <a href="https://github.com/vapor/vapor">
-        <img src="https://img.shields.io/badge/Vapor-3.3.0-blue.svg" alt="Vapor 3.3.0">
-    </a>
-
-    <a href="https://swift.org">
-        <img src="https://img.shields.io/badge/swift-5-orange.svg" alt="Swift 5">
-    </a>
-    <a href="https://developer.apple.com/xcode/">
-        <img src="https://img.shields.io/badge/xcode-10.2-blue.svg" alt="Xcode 10.2">
-    </a>
+    <a href="https://github.com/vapor/vapor"><img src="https://img.shields.io/badge/Vapor-3.3.0-blue.svg" alt="Vapor 3.3.0" /></a>
+    <a href="https://swift.org"><img src="https://img.shields.io/badge/swift-5-orange.svg" alt="Swift 5" /></a>
+    <a href="https://developer.apple.com/xcode/"><img src="https://img.shields.io/badge/Xcode-10.2-blue.svg" alt="Xcode 10.2" /></a>
 </p>
-
-<p>FootballGather is a demo project for friends to get together and play football matches as quick as possible.</p>
-<p>My intention is to to try out different iOS Architecture Patterns and use server side Swift (Vapor this time).
-I created the mocks using Balsamiq.</p>
+                                                                                                                         
+FootballGather is a demo project for friends to get together and play football matches as quick as possible.
+My intention is to to try out different iOS Architecture Patterns and use server side Swift (Vapor this time).
+I created the mocks using Balsamiq.
 
 This repo contains the server side logic. For the iOS version, please check <a href="https://github.com/radude89/footballgather-ios" target="_blank">Football Gather - iOS Side</a>.
 
@@ -32,8 +26,8 @@ This repo contains the server side logic. For the iOS version, please check <a h
 
 ## Database Structure
 
-<p align="left">
-    <img src="https://github.com/radude89/footballgather-ws/tree/master/FootballGatherServer/Screenshots/FootballGather-db-diagram-v01.png" width="50%" height="50%" alt="FootballGather-db-diagram" />
+<p align="center">
+    <img src="https://github.com/radude89/footballgather-ws/blob/master/Screenshots/FootballGather-db-diagram-v01.png" width="50%" height="50%" alt="FootballGather-db-diagram" />
 </p>
 
 ## API
