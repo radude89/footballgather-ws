@@ -11,6 +11,10 @@ My intention is to to try out different iOS Architecture Patterns and use server
 
 This repo contains the server side logic. For the iOS version, please check <a href="https://github.com/radude89/footballgather-ios" target="_blank">Football Gather - iOS Side</a>.
 
+* If you want to get started with Vapor, this video is awesome: <a href="https://www.raywenderlich.com/870225-server-side-swift-with-vapor">Server Side Swift with Vapor</a> from <a href="https://www.raywenderlich.com/">Ray Wenderlich</a>.
+* <a href="https://github.com/vapor/vapor">Vapor Web Framework</a>
+* <a href="https://docs.vapor.codes/3.0/">Vapor Docs</a>
+
 ## Features
 * Ability to add players
 * Set countdown timer for matches
@@ -20,7 +24,6 @@ This repo contains the server side logic. For the iOS version, please check <a h
 ## TODOs
 
 - [ ] Finish the implementation of the web services API
-- [ ] Add documentation
 - [ ] Nice to have basic access authentication
 
 ## Database Structure
