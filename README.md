@@ -35,10 +35,11 @@ This repo contains the server side logic. For the iOS version, please check <a h
 ## API
 
 ### UserController
-* **POST** /api/users/login - Login functionality for users
-* **POST** /api/users - Registers a new user
-* **GET** /api/users - Get the list of users
-* **DELETE** /api/users - Get the list of users
+* **POST /api/users/login** - Login functionality for users
+* **POST /api/users** - Registers a new user
+* **GET /api/users** - Get the list of users
+* **GET /api/users/{userId}** - Get user by its id
+* **DELETE /api/users** - Get the list of users
 
 ### PlayerController
 * **GET /api/players** - Gets the list of players
