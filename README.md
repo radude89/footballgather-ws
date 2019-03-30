@@ -44,7 +44,6 @@ This repo contains the server side logic. For the iOS version, please check <a h
 * **GET /api/players** - Gets the list of players
 * **GET /api/players/{playerId}** - Gets the player by its id
 * **GET /api/players/{playerId}/gathers** - Gets the list of gathers for the player
-* **POST /api/players/{playerId}/gathers/{gatherId}** - Adds a player to the gather
 * **POST /api/players** - Adds a new player
 * **DELETE /api/players/{playerId}** - Deletes a player with a given id
 * **PUT /api/players/{playerId}** - Updates a player by its id
