@@ -48,7 +48,7 @@ This repo contains the server side logic. For the iOS version, please check <a h
 
 ### GatherController
 * **GET /api/gathers** - Gets the list of gathers
-* **GET /api/gathers/{gatherUd}** - Gets the gather by its id
+* **GET /api/gathers/{gatherId}** - Gets the gather by its id
 * **GET /api/gathers/{gatherId}/gathers** - Gets the list of players in the gather specified by id
 * **POST /api/gathers** - Adds a new gather
 * **DELETE /api/gathers/{gatherId}** - Deletes a gather with a given id
