@@ -9,6 +9,7 @@ struct PlayerController: RouteCollection {
         playerRoute.post(Player.self, use: createHandler)
         playerRoute.delete(Player.parameter, use: deleteHandler)
         playerRoute.put(Player.parameter, use: updateHandler)
+        playerRoute.get(Player.parameter, "gathers", use: getGathersHandler)
     }
     
     func getAllHandler(_ req: Request) throws -> Future<[Player]> {
@@ -43,20 +44,18 @@ struct PlayerController: RouteCollection {
     func updateHandler(_ req: Request) throws -> Future<HTTPStatus> {
         return try flatMap(to: HTTPStatus.self, req.parameters.next(Player.self), req.content.decode(Player.self)) { player, updatedPlayer in
             player.age = updatedPlayer.age
-            
-            if let favouriteTeam = updatedPlayer.favouriteTeam {
-                player.favouriteTeam = favouriteTeam
-            }
-            
-            if let preferredPosition = updatedPlayer.preferredPosition {
-                player.preferredPosition = preferredPosition
-            }
-            
-            if let skill = updatedPlayer.skill {
-                player.skill = skill
-            }
+            player.name = updatedPlayer.name
+            player.preferredPosition = updatedPlayer.preferredPosition
+            player.favouriteTeam = updatedPlayer.favouriteTeam
+            player.skill = updatedPlayer.skill
             
             return player.save(on: req).transform(to: .noContent)
+        }
+    }
+    
+    func getGathersHandler(_ req: Request) throws -> Future<[Gather]> {        
+        return try req.parameters.next(Player.self).flatMap(to: [Gather].self) { player in
+            return try player.gathers.query(on: req).all()
         }
     }
 }
