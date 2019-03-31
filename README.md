@@ -29,7 +29,7 @@ This repo contains the server side logic. For the iOS version, please check <a h
 ## Database Structure
 
 <p align="center">
-    <img src="https://github.com/radude89/footballgather-ws/blob/master/Screenshots/FootballGather-db-diagram-v01.png" width="50%" height="50%" alt="FootballGather-db-diagram" />
+    <img src="https://github.com/radude89/footballgather-ws/blob/master/Screenshots/FootballGather-db-diagram-v02.png" width="50%" height="50%" alt="FootballGather-db-diagram" />
 </p>
 
 ## API
