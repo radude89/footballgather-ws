@@ -35,10 +35,11 @@ This repo contains the server side logic. For the iOS version, please check <a h
 ## API
 
 ### UserController
-* **POST** /api/users/login - Login functionality for users
-* **POST** /api/users - Registers a new user
-* **GET** /api/users - Get the list of users
-* **DELETE** /api/users - Get the list of users
+* **POST /api/users/login** - Login functionality for users
+* **POST /api/users** - Registers a new user
+* **GET /api/users** - Get the list of users
+* **GET /api/users/{userId}** - Get user by its id
+* **DELETE /api/users** - Get the list of users
 
 ### PlayerController
 * **GET /api/players** - Gets the list of players
@@ -51,7 +52,8 @@ This repo contains the server side logic. For the iOS version, please check <a h
 ### GatherController
 * **GET /api/gathers** - Gets the list of gathers
 * **GET /api/gathers/{gatherId}** - Gets the gather by its id
-* **GET /api/gathers/{gatherId}/gathers** - Gets the list of players in the gather specified by id
+* **GET /api/gathers/{gatherId}/players** - Gets the list of players in the gather specified by id
+* **POST /api/gathers/{gatherId}/players/{playerId}** - Adds a player to the gather
 * **POST /api/gathers** - Adds a new gather
 * **DELETE /api/gathers/{gatherId}** - Deletes a gather with a given id
 * **PUT /api/gathers/{gatherId}** - Updates a gather by its id
