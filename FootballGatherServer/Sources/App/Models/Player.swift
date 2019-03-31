@@ -14,7 +14,7 @@ final class Player: Codable {
     }
     
     enum Position: String, Codable {
-        case any, goalkeeper, midfielder, defender
+        case goalkeeper, defender, midfielder, winger, striker
     }
     
     init(name: String, age: Int, skill: Skill, preferredPosition: Position, favouriteTeam: String) {
@@ -50,3 +50,9 @@ extension Player: SQLiteModel {}
 extension Player: Content {}
 extension Player: Migration {}
 extension Player: Parameter {}
+
+extension Player {
+    var gathers: Siblings<Player, Gather, PlayerGatherPivot> {
+        return siblings()
+    }
+}
