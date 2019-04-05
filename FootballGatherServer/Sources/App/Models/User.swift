@@ -1,7 +1,7 @@
 import FluentSQLite
 import Vapor
 
-final class User: Codable {
+final class User {
     var id: UUID?
     var username: String
     var password: String
