@@ -7,18 +7,27 @@ struct UserController: RouteCollection {
         userRoute.get(use: getAllHandler)
         userRoute.get(User.parameter, use: getHandler)
         userRoute.post(User.self, use: createHandler)
-        userRoute.delete(User.parameter, use: deleteHandler)
+        
+        let basicAuthMiddleware = User.basicAuthMiddleware(using: BCryptDigest())
+        let guardMiddleware = User.guardAuthMiddleware()
+        let basicAuthGroup = userRoute.grouped(basicAuthMiddleware, guardMiddleware)
+        basicAuthGroup.post("login", use: loginHandler)
+        
+        let tokenAuthMiddleware = User.tokenAuthMiddleware()
+        let tokenAuthGroup = userRoute.grouped(tokenAuthMiddleware, guardMiddleware)
+        tokenAuthGroup.delete(use: deleteHandler)
     }
     
-    func getAllHandler(_ req: Request) throws -> Future<[User]> {
-        return User.query(on: req).decode(data: User.self).all()
+    func getAllHandler(_ req: Request) throws -> Future<[User.Public]> {
+        return User.query(on: req).decode(data: User.Public.self).all()
     }
     
-    func getHandler(_ req: Request) throws -> Future<User> {
-        return try req.parameters.next(User.self)
+    func getHandler(_ req: Request) throws -> Future<User.Public> {
+        return try req.parameters.next(User.self).toPublicUser()
     }
     
     func createHandler(_ req: Request, user: User) throws -> Future<Response> {
+        user.password = try BCrypt.hash(user.password)
         return user.save(on: req).map { user in
             var httpResponse = HTTPResponse()
             httpResponse.status = .created
@@ -34,8 +43,15 @@ struct UserController: RouteCollection {
     }
     
     func deleteHandler(_ req: Request) throws -> Future<HTTPStatus> {
-        return try req.parameters.next(User.self).flatMap(to: HTTPStatus.self) { user in
-            return user.delete(on: req).transform(to: .noContent)
-        }
+        let user = try req.requireAuthenticated(User.self)
+        return user.delete(on: req).transform(to: .noContent)
     }
+    
+    func loginHandler(_ req: Request) throws -> Future<Token> {
+        let user = try req.requireAuthenticated(User.self)
+        let token = try Token.generate(for: user)
+        
+        return token.save(on: req)
+    }
+    
 }

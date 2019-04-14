@@ -4,24 +4,27 @@ import Crypto
 struct GatherController: RouteCollection {
     func boot(router: Router) throws {
         let gatherRoute = router.grouped("api", "gathers")
-        gatherRoute.get(use: getAllHandler)
-        gatherRoute.get(Gather.parameter, use: getHandler)
-        gatherRoute.post(Gather.self, use: createHandler)
-        gatherRoute.delete(Gather.parameter, use: deleteHandler)
-        gatherRoute.put(Gather.parameter, use: updateHandler)
-        gatherRoute.post(Gather.parameter, "players", Player.parameter, use: addPlayerHandler)
-        gatherRoute.get(Gather.parameter, "players", use: getPlayersHandler)
+        let tokenAuthMiddleware = User.tokenAuthMiddleware()
+        let guardMiddelware = User.guardAuthMiddleware()
+        let tokenAuthGroup = gatherRoute.grouped(tokenAuthMiddleware, guardMiddelware)
+        
+        tokenAuthGroup.get(use: getGathersHandler)
+        tokenAuthGroup.post(GatherCreateData.self, use: createHandler)
+        tokenAuthGroup.delete(Gather.parameter, use: deleteHandler)
+        tokenAuthGroup.put(Gather.parameter, use: updateHandler)
+        tokenAuthGroup.post(Gather.parameter, "players", Player.parameter, use: addPlayerHandler)
+        tokenAuthGroup.get(Gather.parameter, "players", use: getPlayersHandler)
     }
     
-    func getAllHandler(_ req: Request) throws -> Future<[Gather]> {
-        return Gather.query(on: req).all()
+    func getGathersHandler(_ req: Request) throws -> Future<[Gather]> {
+        let user = try req.requireAuthenticated(User.self)
+        return try user.gathers.query(on: req).all()
     }
     
-    func getHandler(_ req: Request) throws -> Future<Gather> {
-        return try req.parameters.next(Gather.self)
-    }
-    
-    func createHandler(_ req: Request, gather: Gather) throws -> Future<Response> {
+    func createHandler(_ req: Request, gatherCreateData: GatherCreateData) throws -> Future<Response> {
+        let user = try req.requireAuthenticated(User.self)
+        let gather = try Gather(userId: user.requireID(), score: gatherCreateData.score, winnerTeam: gatherCreateData.winnerTeam)
+        
         return gather.save(on: req).map { gather in
             var httpResponse = HTTPResponse()
             httpResponse.status = .created
@@ -37,34 +40,85 @@ struct GatherController: RouteCollection {
     }
     
     func deleteHandler(_ req: Request) throws -> Future<HTTPStatus> {
-        return try req.parameters.next(Gather.self).flatMap(to: HTTPStatus.self) { gather in
-            return gather.delete(on: req).transform(to: .noContent)
+        let user = try req.requireAuthenticated(User.self)
+        return try flatMap(to: HTTPStatus.self,
+                           req.parameters.next(Gather.self),
+                           user.gathers.query(on: req).all()) { gather, gathers in
+                            
+                            for aGather in gathers {
+                                if aGather.id == gather.id {
+                                    return gather.delete(on: req).transform(to: .noContent)
+                                }
+                            }
+                            
+                            throw Abort(.notFound)
         }
     }
     
     func updateHandler(_ req: Request) throws -> Future<HTTPStatus> {
-        return try flatMap(to: HTTPStatus.self, req.parameters.next(Gather.self), req.content.decode(GatherUpdateData.self)) { gather, updatedGather in
-            gather.score = updatedGather.score
-            gather.winnerTeam = updatedGather.winnerTeam
-            
-            return gather.save(on: req).transform(to: .noContent)
+        let user = try req.requireAuthenticated(User.self)
+        return try flatMap(to: HTTPStatus.self,
+                           req.parameters.next(Gather.self),
+                           req.content.decode(GatherUpdateData.self),
+                           user.gathers.query(on: req).all()) { gather, updatedGather, gathers in
+                            
+                            for aGather in gathers {
+                                if aGather.id == gather.id {
+                                    gather.score = updatedGather.score
+                                    gather.winnerTeam = updatedGather.winnerTeam
+                                    
+                                    let user = try req.requireAuthenticated(User.self)
+                                    gather.userId = try user.requireID()
+                                    
+                                    return gather.save(on: req).transform(to: .noContent)
+                                }
+                            }
+                            
+                            throw Abort(.notFound)
         }
     }
     
     func addPlayerHandler(_ req: Request) throws -> Future<HTTPStatus> {
-        return try flatMap(to: HTTPStatus.self, req.parameters.next(Gather.self), req.parameters.next(Player.self), req.content.decode(PlayerGatherData.self)) { gather, player, playerGather in
-            
-            let pivot = try PlayerGatherPivot(playerId: player.requireID(), gatherId: gather.requireID(), team: playerGather.team)
-            return pivot.save(on: req).transform(to: .ok)
+        let user = try req.requireAuthenticated(User.self)
+        return try flatMap(to: HTTPStatus.self,
+                           req.parameters.next(Gather.self),
+                           req.parameters.next(Player.self),
+                           req.content.decode(PlayerGatherData.self),
+                           user.gathers.query(on: req).all()) { gather, player, playerGather, gathers in
+                            
+                            for aGather in gathers {
+                                if aGather.id == gather.id {
+                                    let pivot = try PlayerGatherPivot(playerId: player.requireID(), gatherId: gather.requireID(), team: playerGather.team)
+                                    return pivot.save(on: req).transform(to: .ok)
+                                }
+                            }
+                            
+                            throw Abort(.notFound)
         }
     }
     
     func getPlayersHandler(_ req: Request) throws -> Future<[Player]> {
-        return try req.parameters.next(Gather.self).flatMap(to: [Player].self) { gather in
-            return try gather.players.query(on: req).all()
+        let user = try req.requireAuthenticated(User.self)
+        
+        return try flatMap(to: [Player].self,
+                           req.parameters.next(Gather.self),
+                           user.gathers.query(on: req).all()) { gather, gathers in
+                            
+                            for aGather in gathers {
+                                if aGather.id == gather.id {
+                                    return try gather.players.query(on: req).all()
+                                }
+                            }
+                            
+                            throw Abort(.notFound)
         }
     }
     
+}
+
+struct GatherCreateData: Content {
+    var score: String?
+    var winnerTeam: String?
 }
 
 struct GatherUpdateData: Content {
