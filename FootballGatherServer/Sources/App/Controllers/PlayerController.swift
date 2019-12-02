@@ -102,7 +102,7 @@ struct PlayerController: RouteCollection {
 
 struct PlayerCreateData: Content {
     var name: String
-    var age: Int
+    var age: Int?
     var skill: Player.Skill?
     var preferredPosition: Player.Position?
     var favouriteTeam: String?
