@@ -1,41 +1,53 @@
 import Vapor
-import FluentSQLite
-import Crypto
-import Authentication
+import Fluent
 
-final class Token: Codable {
-    var id: UUID?
-    var token: String
-    var userID: User.ID
+// MARK: - Model
+final class Token: Model {
+    static let schema = "tokens"
     
-    init(token: String, userID: User.ID) {
+    @ID(key: .id)
+    var id: UUID?
+    
+    @Field(key: "token")
+    var token: String
+    
+    @Parent(key: "user_id")
+    var user: User
+    
+    init() {}
+    
+    init(id: UUID? = nil,
+         token: String,
+         userID: User.IDValue) {
+        self.id = id
         self.token = token
-        self.userID = userID
+        self.$user.id = userID
     }
 }
 
-extension Token: SQLiteUUIDModel {}
 extension Token: Content {}
-extension Token: Migration {}
 
-extension Token {
-    var user: Parent<Token, User> {
-        return parent(\.userID)
+// MARK: - Migration
+extension Token: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        database.schema(Token.schema)
+            .id()
+            .field("token", .string, .required)
+            .field("user_id", .uuid, .required, .references("users", "id"))
+            .foreignKey("user_id", references: "users", "id", onDelete: .cascade)
+            .unique(on: "token")
+            .create()
+    }
+    
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        database.schema(Token.schema).delete()
     }
 }
 
-extension Token {
-    static func generate(for user: User) throws -> Token {
-        let random = try CryptoRandom().generateData(count: 16)
-        return try Token(token: random.base64EncodedString(), userID: user.requireID())
-    }
-}
-
-extension Token: Authentication.Token {
-    static let userIDKey: UserIDKey = \Token.userID
-    typealias UserType = User
-}
-
-extension Token: BearerAuthenticatable {
-    static let tokenKey: TokenKey = \Token.token
+// MARK: - Authenticable
+extension Token: ModelTokenAuthenticatable {
+    static let valueKey = \Token.$token
+    static let userKey = \Token.$user
+    
+    var isValid: Bool { true }
 }

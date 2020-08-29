@@ -1,13 +1,13 @@
 import Vapor
+import Fluent
 
-/// Register your application's routes here.
-public func routes(_ router: Router) throws {
+func routes(_ app: Application) throws {
     let userController = UserController()
-    try router.register(collection: userController)
+    try app.routes.register(collection: userController)
     
     let playerController = PlayerController()
-    try router.register(collection: playerController)
+    try app.routes.register(collection: playerController)
     
     let gatherController = GatherController()
-    try router.register(collection: gatherController)
+    try app.routes.register(collection: gatherController)
 }

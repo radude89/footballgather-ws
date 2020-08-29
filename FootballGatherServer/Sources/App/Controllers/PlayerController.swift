@@ -1,109 +1,133 @@
 import Vapor
-import Crypto
 
+// MARK: - Controller
 struct PlayerController: RouteCollection {
-    func boot(router: Router) throws {
-        let playerRoute = router.grouped("api", "players")
-        let tokenAuthMiddleware = User.tokenAuthMiddleware()
-        let guardMiddelware = User.guardAuthMiddleware()
-        let tokenAuthGroup = playerRoute.grouped(tokenAuthMiddleware, guardMiddelware)
+    func boot(routes: RoutesBuilder) throws {
+        let playerRoute = routes.grouped("api", "players")
+        let tokenAuthMiddleware = Token.authenticator()
+        let guardMiddleware = User.guardMiddleware()
+        let tokenAuthGroup = playerRoute.grouped(tokenAuthMiddleware, guardMiddleware)
         
-        tokenAuthGroup.post(PlayerCreateData.self, use: createHandler)
-        tokenAuthGroup.delete(Player.parameter, use: deleteHandler)
-        tokenAuthGroup.put(Player.parameter, use: updateHandler)
-        tokenAuthGroup.get(Player.parameter, "gathers", use: getGathersHandler)
+        tokenAuthGroup.post(use: createHandler)
+        tokenAuthGroup.delete(":id", use: deleteHandler)
+        tokenAuthGroup.put(":id", use: updateHandler)
+        tokenAuthGroup.get(":id", "gathers", use: getGathersHandler)
         tokenAuthGroup.get(use: getPlayersHandler)
     }
     
-    func getPlayersHandler(_ req: Request) throws -> Future<[Player]> {
-        let user = try req.requireAuthenticated(User.self)
-        return try user.players.query(on: req).all()
+    func getPlayersHandler(_ req: Request) throws -> EventLoopFuture<[PlayerResponseData]> {
+        let user = try req.auth.require(User.self)
+        return user.$players.query(on: req.db).all().flatMapEachThrowing {
+            try PlayerResponseData(id: $0.requireID(),
+                                   name: $0.name,
+                                   age: $0.age,
+                                   skill: $0.skill,
+                                   preferredPosition: $0.preferredPosition,
+                                   favouriteTeam: $0.favouriteTeam)
+        }
     }
     
-    func createHandler(_ req: Request, playerCreateData: PlayerCreateData) throws -> Future<Response> {
-        let user = try req.requireAuthenticated(User.self)
-        let player = try Player(userId: user.requireID(), name: playerCreateData.name, age: playerCreateData.age, skill: playerCreateData.skill, preferredPosition: playerCreateData.preferredPosition, favouriteTeam: playerCreateData.favouriteTeam)
+    func createHandler(_ req: Request) throws -> EventLoopFuture<Response> {
+        let playerCreateData = try req.content.decode(PlayerCreateData.self)
+        let user = try req.auth.require(User.self)
+        let player = try Player(userID: user.requireID(),
+                                name: playerCreateData.name,
+                                age: playerCreateData.age,
+                                skill: playerCreateData.skill,
+                                preferredPosition: playerCreateData.preferredPosition,
+                                favouriteTeam: playerCreateData.favouriteTeam)
         
-        return player.save(on: req).map { player in
-            var httpResponse = HTTPResponse()
-            httpResponse.status = .created
+        return player.save(on: req.db).map {
+            let response = Response()
+            response.status = .created
             
-            if let playerId = player.id {
-                let location = req.http.url.path + "/\(playerId)"
-                httpResponse.headers.replaceOrAdd(name: "Location", value: location)
+            if let playerID = player.id?.description {
+                let location = req.url.path + "/" + playerID
+                response.headers.replaceOrAdd(name: "Location", value: location)
             }
             
-            let response = Response(http: httpResponse, using: req)
             return response
         }
     }
     
-    func deleteHandler(_ req: Request) throws -> Future<HTTPStatus> {
-        let user = try req.requireAuthenticated(User.self)
-        return try flatMap(to: HTTPStatus.self,
-                           req.parameters.next(Player.self),
-                           user.players.query(on: req).all()) { player, players in
-                            
-                            for aPlayer in players {
-                                if aPlayer.id == player.id {
-                                    return player.delete(on: req).transform(to: .noContent)
-                                }
-                            }
-                            
-                            throw Abort(.notFound)
-        }
-    }
-    
-    func updateHandler(_ req: Request) throws -> Future<HTTPStatus> {
-        let user = try req.requireAuthenticated(User.self)
-        return try flatMap(to: HTTPStatus.self,
-                           req.parameters.next(Player.self),
-                           req.content.decode(PlayerCreateData.self),
-                           user.players.query(on: req).all()) { player, updatedPlayer, players in
-                            
-                            for aPlayer in players {
-                                if aPlayer.id == player.id {
-                                    player.age = updatedPlayer.age
-                                    player.name = updatedPlayer.name
-                                    player.preferredPosition = updatedPlayer.preferredPosition
-                                    player.favouriteTeam = updatedPlayer.favouriteTeam
-                                    player.skill = updatedPlayer.skill
-                                    
-                                    let user = try req.requireAuthenticated(User.self)
-                                    player.userId = try user.requireID()
-                                    
-                                    return player.save(on: req).transform(to: .noContent)
-                                }
-                            }
-                            
-                            throw Abort(.notFound)
-        }
-    }
-    
-    func getGathersHandler(_ req: Request) throws -> Future<[Gather]> {
-        let user = try req.requireAuthenticated(User.self)
-        return try flatMap(to: [Gather].self,
-                           req.parameters.next(Player.self),
-                           user.players.query(on: req).all()) { player, players in
-                            
-                            for aPlayer in players {
-                                if aPlayer.id == player.id {
-                                    return try req.parameters.next(Player.self).flatMap(to: [Gather].self) { player in
-                                        return try player.gathers.query(on: req).all()
-                                    }
-                                }
-                            }
-                            
-                            throw Abort(.notFound)
+    func deleteHandler(_ req: Request) throws -> EventLoopFuture<HTTPStatus> {
+        let user = try req.auth.require(User.self)
+        
+        guard let id = req.parameters.get("id", as: Int.self) else {
+            throw Abort(.badRequest)
         }
         
+        return user.$players.get(on: req.db).flatMap { players in
+            if let player = players.first(where: { $0.id == id }) {
+                return player.delete(on: req.db).transform(to: HTTPStatus.noContent)
+            }
+            
+            return req.eventLoop.makeFailedFuture(Abort(.notFound))
+        }
+    }
+    
+    func updateHandler(_ req: Request) throws -> EventLoopFuture<HTTPStatus> {
+        let user = try req.auth.require(User.self)
+        let playerCreateData = try req.content.decode(PlayerCreateData.self)
+        
+        guard let id = req.parameters.get("id", as: Int.self) else {
+            throw Abort(.badRequest)
+        }
+        
+        return user.$players.get(on: req.db).flatMap { players in
+            guard let player = players.first(where: { $0.id == id }) else {
+                return req.eventLoop.makeFailedFuture(Abort(.notFound))
+            }
+            
+            player.age = playerCreateData.age
+            player.name = playerCreateData.name
+            player.preferredPosition = playerCreateData.preferredPosition
+            player.favouriteTeam = playerCreateData.favouriteTeam
+            player.skill = playerCreateData.skill
+            
+            return player.save(on: req.db).transform(to: HTTPStatus.noContent)
+        }
+    }
+    
+    func getGathersHandler(_ req: Request) throws -> EventLoopFuture<[GatherResponseData]> {
+        let user = try req.auth.require(User.self)
+        
+        guard let id = req.parameters.get("id", as: Int.self) else {
+            throw Abort(.badRequest)
+        }
+        
+        return user.$players.get(on: req.db).flatMap { players in
+            guard let player = players.first(where: { $0.id == id }) else {
+                return req.eventLoop.makeFailedFuture(Abort(.notFound))
+            }
+            
+            return player.$gathers.query(on: req.db)
+                .all()
+                .flatMapEachThrowing {
+                    try GatherResponseData(
+                        id: $0.requireID(),
+                        userId: user.requireID(),
+                        score: $0.score,
+                        winnerTeam: $0.winnerTeam
+                    )}
+        }
     }
 }
 
+// MARK: - Request models
+struct PlayerResponseData: Content {
+    let id: Int
+    let name: String
+    let age: Int?
+    let skill: Player.Skill?
+    let preferredPosition: Player.Position?
+    let favouriteTeam: String?
+}
+
 struct PlayerCreateData: Content {
-    var name: String
-    var age: Int?
-    var skill: Player.Skill?
-    var preferredPosition: Player.Position?
-    var favouriteTeam: String?
+    let name: String
+    let age: Int?
+    let skill: Player.Skill?
+    let preferredPosition: Player.Position?
+    let favouriteTeam: String?
 }
