@@ -1,24 +1,46 @@
-import FluentSQLite
 import Vapor
+import FluentSQLiteDriver
 
-final class PlayerGatherPivot: SQLiteUUIDPivot {
+// MARK: - Model
+final class PlayerGatherPivot: Model {
+    static let schema = "player_gather"
+    
+    @ID(key: .id)
     var id: UUID?
-    var playerId: Player.ID
-    var gatherId: Gather.ID
+    
+    @Parent(key: "player_id")
+    var player: Player
+    
+    @Parent(key: "gather_id")
+    var gather: Gather
+
+    @Field(key: "team")
     var team: String
     
-    typealias Left = Player
-    typealias Right = Gather
-    
-    static var leftIDKey: LeftIDKey = \PlayerGatherPivot.playerId
-    static var rightIDKey: RightIDKey = \PlayerGatherPivot.gatherId
-    
-    init(playerId: Player.ID, gatherId: Gather.ID, team: String) {
-        self.playerId = playerId
-        self.gatherId = gatherId
+    init() {}
+
+    init(playerID: Player.IDValue,
+         gatherID: Gather.IDValue,
+         team: String) {
+        self.$player.id = playerID
+        self.$gather.id = gatherID
         self.team = team
     }
     
 }
 
-extension PlayerGatherPivot: Migration {}
+// MARK: - Migration
+extension PlayerGatherPivot: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        database.schema(PlayerGatherPivot.schema)
+            .field("id", .uuid, .identifier(auto: true))
+            .field("player_id", .int, .required)
+            .field("gather_id", .uuid, .required)
+            .field("team", .string, .required)
+            .create()
+    }
+
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        database.schema(PlayerGatherPivot.schema).delete()
+    }
+}

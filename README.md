@@ -1,9 +1,9 @@
 # Football Gather - Server Side
 
 <p align="center">
-    <a href="https://github.com/vapor/vapor"><img src="https://img.shields.io/badge/Vapor-3.3.0-blue.svg" alt="Vapor 3.3.0" /></a>
-    <a href="https://swift.org"><img src="https://img.shields.io/badge/swift-5-orange.svg" alt="Swift 5" /></a>
-    <a href="https://developer.apple.com/xcode/"><img src="https://img.shields.io/badge/Xcode-10.2-blue.svg" alt="Xcode 10.2" /></a>
+    <a href="https://github.com/vapor/vapor"><img src="https://img.shields.io/badge/Vapor-4-blue.svg" alt="Vapor 4" /></a>
+    <a href="https://swift.org"><img src="https://img.shields.io/badge/swift-5.2-orange.svg" alt="Swift 5.2" /></a>
+    <a href="https://developer.apple.com/xcode/"><img src="https://img.shields.io/badge/Xcode-11.6-blue.svg" alt="Xcode 11.6" /></a>
 </p>
 
 FootballGather is a demo project for friends to get together and play football matches as quick as possible.
@@ -23,8 +23,8 @@ This repo contains the server side logic. For the iOS version, please check <a h
 
 ## TODOs
 
-- [ ] Finish the implementation of the web services API
-- [ ] Nice to have basic access authentication
+- [x] Finish the implementation of the web services API
+- [x] Nice to have basic access authentication
 
 ## Database Structure
 

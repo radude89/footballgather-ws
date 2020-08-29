@@ -1,18 +1,58 @@
-import FluentSQLite
+import Fluent
 import Vapor
-import Authentication
 
-final class User {
+// MARK: - Model
+final class User: Model {
+    static let schema = "users"
+    
+    @ID(key: .id)
     var id: UUID?
+    
+    @Field(key: "username")
     var username: String
+    
+    @Field(key: "password")
     var password: String
     
-    init(username: String, password: String) {
+    @Children(for: \.$user)
+    var gathers: [Gather]
+    
+    @Children(for: \.$user)
+    var players: [Player]
+    
+    init() {}
+    
+    init(id: UUID? = nil,
+         username: String,
+         password: String) {
+        self.id = id
         self.username = username
         self.password = password
     }
     
-    final class Public: Codable {
+}
+
+extension User: Content {}
+
+// MARK: - Migration
+extension User: Migration {
+    func prepare(on database: Database) -> EventLoopFuture<Void> {
+        database.schema(User.schema)
+            .id()
+            .field("username", .string, .required)
+            .field("password", .string, .required)
+            .unique(on: "username")
+            .create()
+    }
+    
+    func revert(on database: Database) -> EventLoopFuture<Void> {
+        database.schema(User.schema).delete()
+    }
+}
+
+// MARK: - Public User
+extension User {
+    final class Public {
         var id: UUID?
         var username: String
         
@@ -20,29 +60,7 @@ final class User {
             self.id = id
             self.username = username
         }
-    }
-}
-
-extension User: SQLiteUUIDModel {}
-extension User: Content {}
-extension User: Parameter {}
-
-extension User: Migration {
-    static func prepare(on conn: SQLiteConnection) -> Future<Void> {
-        return Database.create(self, on: conn) { (builder) in
-            try addProperties(to: builder)
-            builder.unique(on: \.username)
-        }
-    }
-}
-
-extension User {
-    var players: Children<User, Player> {
-        return children(\.userId)
-    }
-    
-    var gathers: Children<User, Gather> {
-        return children(\.userId)
+        
     }
 }
 
@@ -54,22 +72,30 @@ extension User {
     }
 }
 
-extension Future where T: User {
-    func toPublicUser() -> Future<User.Public> {
-        return map(to: User.Public.self) { user in
-            return user.toPublicUser()
-        }
+// MARK: - Auth
+extension User: Validatable {
+    static func validations(_ validations: inout Validations) {
+        validations.add("username", as: String.self, is: !.empty)
+        validations.add("password", as: String.self, is: .count(3...))
     }
 }
 
-extension User: BasicAuthenticatable {
-    static let usernameKey: UsernameKey = \User.username
-    static let passwordKey: PasswordKey = \User.password
+extension User: ModelAuthenticatable {
+    static var usernameKey = \User.$username
+    static var passwordHashKey = \User.$password
+    
+    func verify(password: String) throws -> Bool {
+        try Bcrypt.verify(password, created: self.password)
+    }
 }
 
-extension User: TokenAuthenticatable {
-    typealias TokenType = Token
+extension User {
+    func generateToken() throws -> Token {
+        try .init(
+            token: [UInt8].random(count: 16).base64,
+            userID: self.requireID()
+        )
+    }
 }
 
-extension User: PasswordAuthenticatable {}
-extension User: SessionAuthenticatable {}
+extension User: ModelSessionAuthenticatable {}
